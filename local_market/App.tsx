@@ -13,6 +13,8 @@ export default function App() {
       setSession(session)
     })
 
+ 
+    
     supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
     })
