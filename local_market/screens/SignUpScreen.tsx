@@ -47,7 +47,9 @@ export default function SignUpScreen({ navigation }: any) {
         </View>
 
         <View style={styles.whiteCard}>
-          <Text style={styles.cardTitle}>Sign up</Text>
+          <View style={styles.titleContainer}>
+            <Text style={styles.cardTitle}>Create Your Account</Text>
+          </View>
 
           <TextInput
             placeholder="Full Name"
@@ -72,7 +74,7 @@ export default function SignUpScreen({ navigation }: any) {
 
           <View style={styles.passwordContainer}>
             <TextInput
-              placeholder="********"
+              placeholder="Password"
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -80,7 +82,7 @@ export default function SignUpScreen({ navigation }: any) {
             />
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
               <Ionicons
-                name={showPassword ? 'eye-off' : 'eye'}
+                name={showPassword ? 'eye' : 'eye-off'}
                 size={20}
                 color="#aaa"
               />
@@ -94,7 +96,7 @@ export default function SignUpScreen({ navigation }: any) {
           <View style={styles.footerRow}>
             <Text style={{ color: '#FF3B3F' }}>Already have an account?</Text>
             <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
-              <Text style={styles.link}> Sign in</Text>
+              <Text style={styles.link}> Sign In</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -130,15 +132,19 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 30,
     padding: 25,
   },
+  titleContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   cardTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 20,
   },
   input: {
     backgroundColor: '#f0f0f0',
-    padding: 12,
+    padding: 17,
     borderRadius: 10,
     marginBottom: 15,
   },
@@ -146,23 +152,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f0f0f0',
-    padding: 12,
+    padding: 7,
     borderRadius: 10,
     marginBottom: 15,
     justifyContent: 'space-between',
   },
   passwordInput: {
     flex: 1,
+    padding: 10,
   },
   circleButton: {
     backgroundColor: '#FF3B3F',
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'flex-end',
     marginTop: 10,
+    marginRight: 120,
   },
   footerRow: {
     flexDirection: 'row',

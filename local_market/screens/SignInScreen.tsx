@@ -1,19 +1,24 @@
-// SignInScreen.js
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Dimensions
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const { height } = Dimensions.get('window');
 
 export default function SignInScreen({ navigation }) {
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSignIn = () => {
-    // Add real auth logic here
+    // TODO: Add real authentication logic here
     navigation.replace('Home');
   };
 
@@ -21,23 +26,29 @@ export default function SignInScreen({ navigation }) {
     <View style={styles.container}>
       <View style={styles.redBackground}>
         <Text style={styles.title}>Welcome{"\n"}Back</Text>
-        <Image source={require('../assets/icon.png')} style={styles.image} resizeMode="contain" />
+        <Image
+          source={require('../assets/icon.png')}
+          style={styles.image}
+          resizeMode="contain"
+        />
       </View>
 
       <View style={styles.whiteCard}>
-        <Text style={styles.cardTitle}>Sign in</Text>
+        <View style={styles.titleContainer}>
+          <Text style={styles.cardTitle}>Sign In</Text>
+        </View>
 
         <TextInput
-          placeholder="Example@gmail.com"
-          value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
+          placeholder="email@example.com"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
           style={styles.input}
         />
 
         <View style={styles.passwordContainer}>
           <TextInput
-            placeholder=""
+            placeholder="Password"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
@@ -53,9 +64,9 @@ export default function SignInScreen({ navigation }) {
         </TouchableOpacity>
 
         <View style={styles.footerRow}>
-          <Text style={{ color: '#FF3B3F' }}>Forgot password?</Text>
+          <Text style={{ color: '#FF3B3F' }}>Forgot Password?</Text>
           <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-            <Text style={styles.link}> Sign up</Text>
+            <Text style={styles.link}> Sign Up</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -79,7 +90,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
   },
-  image: { width: 150, height: 150, alignSelf: 'center' },
+  image: {
+    width: 150,
+    height: 150,
+    alignSelf: 'center',
+  },
   whiteCard: {
     position: 'absolute',
     bottom: 0,
@@ -90,29 +105,40 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 40,
     height: height * 0.6,
   },
-  cardTitle: { fontSize: 20, fontWeight: '600', marginBottom: 20 },
-  input: {
-    borderBottomWidth: 1,
-    borderColor: '#ccc',
-    paddingVertical: 10,
+  titleContainer: {
+    width: '100%',
+    alignItems: 'center',
     marginBottom: 20,
+  },
+  cardTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  input: {
+    backgroundColor: '#f0f0f0',
+    padding: 17,
+    borderRadius: 10,
+    marginBottom: 15,
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderColor: '#ccc',
-    paddingVertical: 10,
+    backgroundColor: '#f0f0f0',
+    padding: 7,
+    borderRadius: 10,
+    marginBottom: 10,
     justifyContent: 'space-between',
   },
   passwordInput: {
     flex: 1,
+    paddingRight: 10,
   },
   circleButton: {
     backgroundColor: '#FF3B3F',
     alignSelf: 'center',
     marginVertical: 20,
-    borderRadius: 30,
+    borderRadius: 20,
     padding: 15,
   },
   footerRow: {
@@ -120,5 +146,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 10,
   },
-  link: { color: '#FF3B3F', fontWeight: '500' },
+  link: {
+    color: '#FF3B3F',
+    fontWeight: '500',
+  },
 });
