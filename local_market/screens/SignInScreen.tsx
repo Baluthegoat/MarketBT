@@ -13,7 +13,12 @@ import { supabase } from '../lib/supabase'
 
 const { height } = Dimensions.get('window')
 
-export default function SignInScreen({ navigation }) {
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../lib/types';
+
+type SignInScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SignIn'>;
+
+export default function SignInScreen({ navigation }: { navigation: SignInScreenNavigationProp }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)

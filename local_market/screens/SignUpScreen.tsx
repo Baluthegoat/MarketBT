@@ -15,7 +15,12 @@ import { supabase } from '../lib/supabase'
 
 const { height } = Dimensions.get('window')
 
-export default function SignUpScreen({ navigation }) {
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../lib/types';
+
+type SignUpScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
+
+export default function SignUpScreen({ navigation }: { navigation: SignUpScreenNavigationProp }) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')

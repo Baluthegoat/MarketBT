@@ -3,13 +3,15 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, SafeAreaVi
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 
-export default function HomeScreen({ navigation }) {
+import { NavigationProp } from '@react-navigation/native';
+
+export default function HomeScreen({ navigation }: { navigation: NavigationProp<any> }) {
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       alert(error.message);
     } else {
-      navigation.replace('SignIn');
+      navigation.navigate('SignIn');
     }
   };
 
