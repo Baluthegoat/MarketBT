@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'
 import {
   View,
   Text,
@@ -9,27 +9,36 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+} from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import { supabase } from '../lib/supabase'
 
-const { height } = Dimensions.get('window');
+const { height } = Dimensions.get('window')
 
-export default function SignUpScreen({ navigation }: any) {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+export default function SignUpScreen({ navigation }) {
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     if (!name || !phone || !email || !password) {
-      alert('Please fill in all fields');
-      return;
+      alert('Please fill in all fields')
+      return
     }
 
-    // Replace this with your actual sign-up logic
-    navigation.replace('Home');
-  };
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: name, phone_number: phone },
+      },
+    })
+
+    if (error) return alert(error.message)
+    navigation.replace('Home')
+  }
 
   return (
     <KeyboardAvoidingView
@@ -39,53 +48,20 @@ export default function SignUpScreen({ navigation }: any) {
       <View style={styles.container}>
         <View style={styles.redBackground}>
           <Text style={styles.title}>Let's Start!</Text>
-          <Image
-            source={require('../assets/icon.png')}
-            style={styles.image}
-            resizeMode="contain"
-          />
+          <Image source={require('../assets/icon.png')} style={styles.image} resizeMode="contain" />
         </View>
 
         <View style={styles.whiteCard}>
-          <View style={styles.titleContainer}>
-            <Text style={styles.cardTitle}>Create Your Account</Text>
-          </View>
+          <Text style={styles.cardTitle}>Create Your Account</Text>
 
-          <TextInput
-            placeholder="Full Name"
-            value={name}
-            onChangeText={setName}
-            style={styles.input}
-          />
-          <TextInput
-            placeholder="Phone Number"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            style={styles.input}
-          />
-          <TextInput
-            placeholder="email@example.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            style={styles.input}
-          />
+          <TextInput placeholder="Full Name" value={name} onChangeText={setName} style={styles.input} />
+          <TextInput placeholder="Phone Number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" style={styles.input} />
+          <TextInput placeholder="email@example.com" value={email} onChangeText={setEmail} keyboardType="email-address" style={styles.input} />
 
           <View style={styles.passwordContainer}>
-            <TextInput
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              style={styles.passwordInput}
-            />
+            <TextInput placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} style={styles.passwordInput} />
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <Ionicons
-                name={showPassword ? 'eye' : 'eye-off'}
-                size={20}
-                color="#aaa"
-              />
+              <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={20} color="#aaa" />
             </TouchableOpacity>
           </View>
 
@@ -102,7 +78,7 @@ export default function SignUpScreen({ navigation }: any) {
         </View>
       </View>
     </KeyboardAvoidingView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -141,6 +117,8 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+    textAlign: 'center',
+    marginBottom: 20,
   },
   input: {
     backgroundColor: '#f0f0f0',

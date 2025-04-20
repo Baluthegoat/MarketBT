@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'
 import {
   View,
   Text,
@@ -6,33 +6,33 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  Dimensions
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+  Dimensions,
+} from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import { supabase } from '../lib/supabase'
 
-const { height } = Dimensions.get('window');
+const { height } = Dimensions.get('window')
 
 export default function SignInScreen({ navigation }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
-  const handleSignIn = () => {
-    // TODO: Add real authentication logic here
-    navigation.replace('Home');
-  };
+  const handleSignIn = async () => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+    if (error) return alert(error.message)
+    navigation.replace('Home')
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.redBackground}>
         <Text style={styles.title}>Welcome{"\n"}Back</Text>
-        <Image
-          source={require('../assets/icon.png')}
-          style={styles.image}
-          resizeMode="contain"
-        />
+        <Image source={require('../assets/icon.png')} style={styles.image} resizeMode="contain" />
       </View>
-
       <View style={styles.whiteCard}>
         <View style={styles.titleContainer}>
           <Text style={styles.cardTitle}>Sign In</Text>
@@ -45,7 +45,6 @@ export default function SignInScreen({ navigation }) {
           keyboardType="email-address"
           style={styles.input}
         />
-
         <View style={styles.passwordContainer}>
           <TextInput
             placeholder="Password"
@@ -55,7 +54,7 @@ export default function SignInScreen({ navigation }) {
             style={styles.passwordInput}
           />
           <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color="#aaa" />
+            <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={20} color="#aaa" />
           </TouchableOpacity>
         </View>
 
@@ -71,7 +70,7 @@ export default function SignInScreen({ navigation }) {
         </View>
       </View>
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -127,8 +126,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     padding: 7,
     borderRadius: 10,
-    marginBottom: 10,
-    justifyContent: 'space-between',
+    marginBottom: 15,
   },
   passwordInput: {
     flex: 1,
@@ -136,10 +134,14 @@ const styles = StyleSheet.create({
   },
   circleButton: {
     backgroundColor: '#FF3B3F',
+    width: 50,
+    height: 50,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
     alignSelf: 'center',
     marginVertical: 20,
-    borderRadius: 20,
-    padding: 15,
+    
   },
   footerRow: {
     flexDirection: 'row',
@@ -150,4 +152,4 @@ const styles = StyleSheet.create({
     color: '#FF3B3F',
     fontWeight: '500',
   },
-});
+})
