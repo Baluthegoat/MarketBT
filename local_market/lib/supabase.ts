@@ -3,8 +3,12 @@ import 'react-native-url-polyfill/auto'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://okkcjxtryblpcwlucsvc.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ra2NqeHRyeWJscGN3bHVjc3ZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwOTA3MTYsImV4cCI6MjA1OTY2NjcxNn0.E9YpGnAyfN3XyBvfzOPbn6KXFixML5uhCBo-UBuNNGY'
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error("Missing Supabase environment variables");
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
