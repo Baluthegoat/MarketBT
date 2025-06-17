@@ -1,11 +1,18 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native"
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Platform,
+} from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { supabase } from "../lib/supabase"
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }: { navigation: any }) {
   const [userEmail, setUserEmail] = useState("")
 
   useEffect(() => {
@@ -31,6 +38,15 @@ export default function ProfileScreen() {
           const { error } = await supabase.auth.signOut()
           if (error) {
             Alert.alert("Error", error.message)
+          } else {
+            if (Platform.OS === "web") {
+              window.location.reload()
+            } else {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "Login" }],
+              })
+            }
           }
         },
       },

@@ -1,123 +1,150 @@
 "use client"
 
-import { useState } from "react"
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   StyleSheet,
   Alert,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  TouchableOpacity,
 } from "react-native"
-import { supabase } from "../lib/supabase"
+import * as ImagePicker from "expo-image-picker"
+import TextInputField from "../components/AddCart/TextInputField"
+import Button from "../components/AddCart/Button"
+import { useProductForm } from "../hooks/useProductForm"
+import { uploadProductImage, addProduct } from "../services/productService"
 
 export default function AddProductScreen() {
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const [price, setPrice] = useState("")
-  const [imageUrl, setImageUrl] = useState("")
-  const [loading, setLoading] = useState(false)
+  const {
+    name,
+    setName,
+    description,
+    setDescription,
+    price,
+    setPrice,
+    imageUrl,
+    setImageUrl,
+    loading,
+    setLoading,
+    resetForm,
+  } = useProductForm()
 
-  const handleAddProduct = async () => {
-    if (!name || !description || !price) {
-      Alert.alert("Error", "Please fill in all required fields")
-      return
-    }
-
-    const priceNumber = Number.parseFloat(price)
-    if (isNaN(priceNumber) || priceNumber <= 0) {
-      Alert.alert("Error", "Please enter a valid price")
-      return
-    }
-
-    setLoading(true)
-
+  const handlePickImage = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) {
-        Alert.alert("Error", "You must be logged in to add products")
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (status !== "granted") {
+        Alert.alert("Permission required", "We need access to your photos to upload an image.")
         return
       }
 
-      const { error } = await supabase.from("products").insert({
-        name: name.trim(),
-        description: description.trim(),
-        price: priceNumber,
-        image_url: imageUrl.trim() || null,
-        vendor_id: user.id,
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.3,
+        aspect: [1, 1],
       })
 
-      if (error) throw error
+      if (!result.canceled) {
+        let imageUri = null
+        if (result.assets && result.assets[0]) {
+          imageUri = result.assets[0].uri
+        } else if (result.uri) {
+          imageUri = result.uri
+        }
 
-      Alert.alert("Success", "Product added successfully!")
+        if (imageUri) {
+          setLoading(true)
+          const uploadedUrl = await uploadProductImage(imageUri)
+          setImageUrl(uploadedUrl)
+          Alert.alert("Success", "Image uploaded successfully!")
+        }
+      }
+    } catch (error: any) {
+      Alert.alert("Upload Error", error.message || "Failed to upload image.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
-      // Reset form
-      setName("")
-      setDescription("")
-      setPrice("")
+  const handleAddProduct = async () => {
+    if (!name || !description || !price) {
+      Alert.alert("Missing fields", "Please fill in all required fields.")
+      return
+    }
+
+    const priceNumber = parseFloat(price)
+    if (isNaN(priceNumber) || priceNumber <= 0) {
+      Alert.alert("Invalid price", "Enter a valid numeric price greater than 0.")
+      return
+    }
+
+    try {
+      setLoading(true)
+      await addProduct(name, description, priceNumber, imageUrl || null)
+      Alert.alert("Success 🎉", "Product added successfully!")
+      resetForm()
       setImageUrl("")
-    } catch (error) {
-      console.error("Error adding product:", error)
-      Alert.alert("Error", "Failed to add product. Please try again.")
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Something went wrong.")
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Add New Product</Text>
-          <Text style={styles.subtitle}>Fill in the details to list your product</Text>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <Text style={styles.title}>Add Product</Text>
+        <Text style={styles.subtitle}>Fill in the details to list your product</Text>
 
-          <View style={styles.form}>
-            <Text style={styles.label}>Product Name *</Text>
-            <TextInput style={styles.input} placeholder="Enter product name" value={name} onChangeText={setName} />
+        <View style={styles.form}>
+          <TextInputField
+            label="Name *"
+            value={name}
+            onChangeText={setName}
+            placeholder="Enter product name"
+          />
 
-            <Text style={styles.label}>Description *</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Describe your product"
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
+          <TextInputField
+            label="Description *"
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Product description"
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
 
-            <Text style={styles.label}>Price ($) *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0.00"
-              value={price}
-              onChangeText={setPrice}
-              keyboardType="decimal-pad"
-            />
+          <TextInputField
+            label="Price (Nu) *"
+            value={price}
+            onChangeText={setPrice}
+            placeholder="0.00"
+            keyboardType="decimal-pad"
+          />
 
-            <Text style={styles.label}>Image URL (Optional)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="https://example.com/image.jpg"
-              value={imageUrl}
-              onChangeText={setImageUrl}
-              keyboardType="url"
-              autoCapitalize="none"
-            />
+          <TouchableOpacity onPress={handlePickImage} style={styles.imagePicker} disabled={loading}>
+            {imageUrl ? (
+              <Image source={{ uri: imageUrl }} style={styles.imagePreview} />
+            ) : (
+              <Text style={styles.imagePickerText}>
+                {loading ? "Uploading..." : "Pick an Image"}
+              </Text>
+            )}
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleAddProduct}
-              disabled={loading}
-            >
-              <Text style={styles.buttonText}>{loading ? "Adding Product..." : "Add Product"}</Text>
-            </TouchableOpacity>
-          </View>
+          <Button
+            onPress={handleAddProduct}
+            title="Add Product"
+            loading={loading}
+            disabled={loading}
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -127,68 +154,47 @@ export default function AddProductScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafc",
-  },
-  scrollView: {
-    flex: 1,
+    backgroundColor: "#f1f5f9",
   },
   content: {
     padding: 24,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 8,
+    fontSize: 26,
+    fontWeight: "700",
     color: "#1e293b",
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: "#64748b",
-    marginBottom: 32,
+    marginBottom: 24,
   },
   form: {
-    backgroundColor: "white",
-    borderRadius: 12,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
     padding: 20,
-    elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
+    elevation: 3,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 8,
-    color: "#374151",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
+  imagePicker: {
+    marginTop: 12,
+    marginBottom: 12,
+    height: 150,
+    backgroundColor: "#e2e8f0",
     borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 20,
-    fontSize: 16,
-    backgroundColor: "#fafafa",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  textArea: {
-    height: 100,
-    paddingTop: 12,
+  imagePickerText: {
+    color: "#475569",
   },
-  button: {
-    backgroundColor: "#2563eb",
+  imagePreview: {
+    width: "100%",
+    height: "100%",
     borderRadius: 8,
-    paddingVertical: 16,
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: "white",
-    textAlign: "center",
-    fontSize: 16,
-    fontWeight: "600",
   },
 })

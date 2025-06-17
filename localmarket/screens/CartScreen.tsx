@@ -1,148 +1,270 @@
-"use client"
-
+import { View, FlatList, StyleSheet, Text, Alert } from "react-native"
 import { useState, useEffect } from "react"
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, Alert } from "react-native"
-import { Ionicons } from "@expo/vector-icons"
-import { supabase, type CartItem } from "../lib/supabase"
+import { useCart } from "../hooks/useCart"
+import { supabase } from "../lib/supabase"
+import CartItemCard from "../components/Cart/CartItemCard"
+import EmptyCart from "../components/Cart/EmptyCart"
+import TotalFooter from "../components/Cart/TotalFooter"
 
 export default function CartScreen() {
-  const [cartItems, setCartItems] = useState<CartItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const {
+    cartItems,
+    loading,
+    updateQuantity,
+    removeItem,
+    getTotalPrice,
+    clearCart,
+    refetch,
+  } = useCart()
+  
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
 
   useEffect(() => {
-    fetchCartItems()
-  }, [])
+    const cartSubscription = supabase
+      .channel('cart_changes_screen')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cart_items'
+        },
+        (payload) => {
+          console.log('Cart changed:', payload)
+          setTimeout(() => {
+            refetch()
+          }, 100)
+        }
+      )
+      .subscribe()
 
-  const fetchCartItems = async () => {
+    const orderSubscription = supabase
+      .channel('order_changes_screen')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders'
+        },
+        (payload) => {
+          console.log('Order changed:', payload)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(cartSubscription)
+      supabase.removeChannel(orderSubscription)
+    }
+  }, [refetch])
+
+  const generateOrderId = () => {
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substring(2, 9)
+    return `ORDER_${timestamp}_${random}`
+  }
+
+  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data, error } = await supabase
-        .from("cart_items")
-        .select(`
-          *,
-          product:products(*)
-        `)
-        .eq("user_id", user.id)
-
-      if (error) throw error
-      setCartItems(data || [])
+      await updateQuantity(itemId, newQuantity)
+      setTimeout(() => {
+        refetch()
+      }, 50)
     } catch (error) {
-      console.error("Error fetching cart items:", error)
+      console.error("Update quantity error:", error)
+    }
+  }
+
+  const handleRemoveItem = async (itemId: string) => {
+    try {
+      await removeItem(itemId)
+      setTimeout(() => {
+        refetch()
+      }, 50)
+    } catch (error) {
+      console.error("Remove item error:", error)
+    }
+  }
+
+  const handleCheckout = async () => {
+    try {
+      setCheckoutLoading(true)
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+      if (authError || !user) {
+        Alert.alert("Authentication Required", "Please log in to place an order.")
+        return
+      }
+
+      if (cartItems.length === 0) {
+        Alert.alert("Empty Cart", "Please add items to your cart before checkout.")
+        return
+      }
+
+      const totalAmount = getTotalPrice()
+      const orderId = generateOrderId()
+
+      Alert.alert(
+        "Confirm Order",
+        `Total: Nu ${totalAmount.toFixed(2)}\n\nProceed with checkout?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Confirm", 
+            onPress: () => processOrder(orderId, totalAmount, user.id)
+          }
+        ]
+      )
+
+    } catch (error) {
+      console.error("Checkout error:", error)
+      Alert.alert("Error", "Something went wrong. Please try again.")
     } finally {
-      setLoading(false)
+      setCheckoutLoading(false)
     }
   }
 
-  const updateQuantity = async (itemId: string, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      removeItem(itemId)
-      return
-    }
-
+  const processOrder = async (orderId: string, totalAmount: number, userId: string) => {
     try {
-      const { error } = await supabase.from("cart_items").update({ quantity: newQuantity }).eq("id", itemId)
+      setCheckoutLoading(true)
 
-      if (error) throw error
-      fetchCartItems()
+      const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          id: orderId,
+          user_id: userId,
+          total_amount: totalAmount,
+          status: "pending",
+          order_items: cartItems.map(item => ({
+            product_id: item.product_id,
+            product_name: item.product?.name || "Unknown Product",
+            quantity: item.quantity,
+            price: item.product?.price || 0,
+            subtotal: (item.product?.price || 0) * item.quantity
+          }))
+        })
+        .select()
+        .single()
+
+      if (orderError) {
+        throw new Error(`Order creation failed: ${orderError.message}`)
+      }
+
+      const orderItems = cartItems.map(item => ({
+        order_id: orderId,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price: item.product?.price || 0,
+        subtotal: (item.product?.price || 0) * item.quantity
+      }))
+
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(orderItems)
+
+      if (itemsError) {
+        console.error("Order items error:", itemsError)
+      }
+
+      await clearCart()
+      setTimeout(() => {
+        refetch()
+      }, 100)
+
+      Alert.alert(
+        "Order Placed Successfully! 🎉",
+        `Order ID: ${orderId}\nTotal: Nu ${totalAmount.toFixed(2)}`,
+        [
+          { text: "View Orders", onPress: () => console.log("Order placed:", orderId) },
+          { text: "Continue Shopping", style: "cancel" }
+        ]
+      )
+
     } catch (error) {
-      console.error("Error updating quantity:", error)
-      Alert.alert("Error", "Failed to update quantity")
+      console.error("Process order error:", error)
+      Alert.alert(
+        "Order Failed", 
+        `Failed to place order: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    } finally {
+      setCheckoutLoading(false)
     }
   }
 
-  const removeItem = async (itemId: string) => {
-    try {
-      const { error } = await supabase.from("cart_items").delete().eq("id", itemId)
-
-      if (error) throw error
-      fetchCartItems()
-    } catch (error) {
-      console.error("Error removing item:", error)
-      Alert.alert("Error", "Failed to remove item")
-    }
+  const handleClearCart = () => {
+    Alert.alert(
+      "Clear Cart",
+      "Are you sure you want to remove all items from your cart?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Clear All", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await clearCart()
+              setTimeout(() => {
+                refetch()
+              }, 50)
+              Alert.alert("Success", "Cart cleared successfully!")
+            } catch (error) {
+              Alert.alert("Error", "Failed to clear cart")
+            }
+          }
+        }
+      ]
+    )
   }
-
-  const getTotalPrice = () => {
-    return cartItems.reduce((total, item) => {
-      return total + item.product.price * item.quantity
-    }, 0)
-  }
-
-  const renderCartItem = ({ item }: { item: CartItem }) => (
-    <View style={styles.cartItem}>
-      {item.product.image_url ? (
-        <Image source={{ uri: item.product.image_url }} style={styles.productImage} />
-      ) : (
-        <View style={styles.placeholderImage}>
-          <Ionicons name="image-outline" size={30} color="#94a3b8" />
-        </View>
-      )}
-
-      <View style={styles.productInfo}>
-        <Text style={styles.productName}>{item.product.name}</Text>
-        <Text style={styles.productPrice}>${item.product.price.toFixed(2)}</Text>
-
-        <View style={styles.quantityContainer}>
-          <TouchableOpacity style={styles.quantityButton} onPress={() => updateQuantity(item.id, item.quantity - 1)}>
-            <Ionicons name="remove" size={20} color="#2563eb" />
-          </TouchableOpacity>
-
-          <Text style={styles.quantity}>{item.quantity}</Text>
-
-          <TouchableOpacity style={styles.quantityButton} onPress={() => updateQuantity(item.id, item.quantity + 1)}>
-            <Ionicons name="add" size={20} color="#2563eb" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <TouchableOpacity style={styles.removeButton} onPress={() => removeItem(item.id)}>
-        <Ionicons name="trash-outline" size={20} color="#ef4444" />
-      </TouchableOpacity>
-    </View>
-  )
 
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <Text>Loading cart...</Text>
+        <Text style={styles.loadingText}>Loading cart...</Text>
       </View>
     )
   }
 
   if (cartItems.length === 0) {
-    return (
-      <View style={styles.centerContainer}>
-        <Ionicons name="cart-outline" size={64} color="#94a3b8" />
-        <Text style={styles.emptyText}>Your cart is empty</Text>
-        <Text style={styles.emptySubtext}>Add some products to get started</Text>
-      </View>
-    )
+    return <EmptyCart />
   }
 
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>
+          Shopping Cart ({cartItems.reduce((sum, item) => sum + item.quantity, 0)} items)
+        </Text>
+        <Text 
+          style={styles.clearButton} 
+          onPress={handleClearCart}
+        >
+          Clear All
+        </Text>
+      </View>
+
       <FlatList
         data={cartItems}
-        renderItem={renderCartItem}
+        renderItem={({ item }) => (
+          <CartItemCard
+            item={item}
+            onIncrease={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+            onDecrease={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+            onRemove={() => handleRemoveItem(item.id)}
+          />
+        )}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.cartList}
         showsVerticalScrollIndicator={false}
+        refreshing={loading}
+        onRefresh={refetch} // ✅ Pull-to-refresh functionality
       />
 
-      <View style={styles.footer}>
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>Total:</Text>
-          <Text style={styles.totalPrice}>${getTotalPrice().toFixed(2)}</Text>
-        </View>
-
-        <TouchableOpacity style={styles.checkoutButton}>
-          <Text style={styles.checkoutButtonText}>Checkout</Text>
-        </TouchableOpacity>
-      </View>
+      <TotalFooter 
+        total={getTotalPrice()} 
+        onCheckout={handleCheckout}
+        loading={checkoutLoading}
+      />
     </View>
   )
 }
@@ -158,115 +280,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 24,
   },
-  emptyText: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginTop: 16,
-    color: "#1e293b",
-  },
-  emptySubtext: {
+  loadingText: {
     fontSize: 16,
-    color: "#64748b",
-    marginTop: 8,
+    color: "#6b7280",
   },
-  cartList: {
-    padding: 16,
-  },
-  cartItem: {
-    backgroundColor: "white",
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  productImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  placeholderImage: {
-    width: 60,
-    height: 60,
-    backgroundColor: "#f1f5f9",
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  productInfo: {
-    flex: 1,
-  },
-  productName: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
-    color: "#1e293b",
-  },
-  productPrice: {
-    fontSize: 14,
-    color: "#059669",
-    fontWeight: "500",
-    marginBottom: 8,
-  },
-  quantityContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  quantityButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#f1f5f9",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  quantity: {
-    marginHorizontal: 16,
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1e293b",
-  },
-  removeButton: {
-    padding: 8,
-  },
-  footer: {
-    backgroundColor: "white",
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#e2e8f0",
-  },
-  totalContainer: {
+  header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#ffffff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
   },
-  totalLabel: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1e293b",
-  },
-  totalPrice: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#059669",
-  },
-  checkoutButton: {
-    backgroundColor: "#2563eb",
-    borderRadius: 8,
-    paddingVertical: 16,
-  },
-  checkoutButtonText: {
-    color: "white",
-    textAlign: "center",
+  headerTitle: {
     fontSize: 16,
     fontWeight: "600",
+    color: "#374151",
+  },
+  clearButton: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#ef4444",
+  },
+  cartList: {
+    padding: 16,
   },
 })
