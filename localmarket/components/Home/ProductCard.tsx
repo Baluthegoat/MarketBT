@@ -1,12 +1,19 @@
 import React from "react"
 import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
-import { Product } from "../../lib/supabase"
+
+interface Product {
+  id: string
+  name: string
+  description: string
+  price: number
+  image_url?: string | null
+}
 
 interface ProductCardProps {
   product: Product
   onAddToCart: (product: Product) => void
-  width: number
+  width?: number | string
 }
 
 export function ProductCard({ product, onAddToCart, width }: ProductCardProps) {
@@ -24,7 +31,7 @@ export function ProductCard({ product, onAddToCart, width }: ProductCardProps) {
         {product.description}
       </Text>
       <View style={styles.footer}>
-        <Text style={styles.price}>${product.price.toFixed(2)}</Text>
+        <Text style={styles.price}>Nu. {product.price.toFixed(2)}</Text>
         <TouchableOpacity
           style={styles.cartButton}
           onPress={() => onAddToCart(product)}
@@ -39,40 +46,38 @@ export function ProductCard({ product, onAddToCart, width }: ProductCardProps) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#fff",
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 12,
-    marginBottom: 20,
+    marginBottom: 16,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
     elevation: 3,
   },
   image: {
     width: "100%",
     height: 120,
     borderRadius: 12,
-    marginBottom: 8,
-    resizeMode: "cover",
+    marginBottom: 12,
   },
   imagePlaceholder: {
     width: "100%",
     height: 120,
-    backgroundColor: "#e2e8f0",
     borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: "#e2e8f0",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 8,
   },
   name: {
+    fontWeight: "700",
     fontSize: 16,
-    fontWeight: "600",
-    color: "#1e293b",
     marginBottom: 4,
   },
   description: {
-    fontSize: 13,
-    color: "#64748b",
+    fontSize: 14,
+    color: "#475569",
     marginBottom: 8,
   },
   footer: {
@@ -81,13 +86,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   price: {
+    fontWeight: "700",
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#10b981",
+    color: "#16a34a",
   },
   cartButton: {
-    backgroundColor: "#3b82f6",
-    padding: 8,
-    borderRadius: 8,
+    backgroundColor: "#16a34a",
+    padding: 6,
+    borderRadius: 6,
   },
 })
