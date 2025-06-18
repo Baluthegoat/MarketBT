@@ -37,6 +37,142 @@ export default function CartScreen() {
     }
   }, [refetch])
 
+<<<<<<< HEAD
+=======
+  const generateOrderId = () => {
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substring(2, 9)
+    return `ORDER_${timestamp}_${random}`
+  }
+
+  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
+    try {
+      await updateQuantity(itemId, newQuantity)
+      setTimeout(() => {
+        refetch()
+      }, 50)
+    } catch (error) {
+      console.error("Update quantity error:", error)
+    }
+  }
+
+  const handleRemoveItem = async (itemId: string) => {
+    try {
+      await removeItem(itemId)
+      setTimeout(() => {
+        refetch()
+      }, 50)
+    } catch (error) {
+      console.error("Remove item error:", error)
+    }
+  }
+
+  const handleCheckout = async () => {
+    try {
+      setCheckoutLoading(true)
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+      if (authError || !user) {
+        Alert.alert("Authentication Required", "Please log in togit version control in steps place an order.")
+        return
+      }
+
+      if (cartItems.length === 0) {
+        Alert.alert("Empty Cart", "Please add items to your cart before checkout.")
+        return
+      }
+
+      const totalAmount = getTotalPrice()
+      const orderId = generateOrderId()
+
+      Alert.alert(
+        "Confirm Order",
+        `Total: Nu ${totalAmount.toFixed(2)}\n\nProceed with checkout?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Confirm", 
+            onPress: () => processOrder(orderId, totalAmount, user.id)
+          }
+        ]
+      )
+
+    } catch (error) {
+      console.error("Checkout error:", error)
+      Alert.alert("Error", "Something went wrong. Please try again.")
+    } finally {
+      setCheckoutLoading(false)
+    }
+  }
+
+  const processOrder = async (orderId: string, totalAmount: number, userId: string) => {
+    try {
+      setCheckoutLoading(true)
+
+      const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          id: orderId,
+          user_id: userId,
+          total_amount: totalAmount,
+          status: "pending",
+          order_items: cartItems.map(item => ({
+            product_id: item.product_id,
+            product_name: item.product?.name || "Unknown Product",
+            quantity: item.quantity,
+            price: item.product?.price || 0,
+            subtotal: (item.product?.price || 0) * item.quantity
+          }))
+        })
+        .select()
+        .single()
+
+      if (orderError) {
+        throw new Error(`Order creation failed: ${orderError.message}`)
+      }
+
+      const orderItems = cartItems.map(item => ({
+        order_id: orderId,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price: item.product?.price || 0,
+        subtotal: (item.product?.price || 0) * item.quantity
+      }))
+
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(orderItems)
+
+      if (itemsError) {
+        console.error("Order items error:", itemsError)
+      }
+
+      await clearCart()
+      setTimeout(() => {
+        refetch()
+      }, 100)
+
+      Alert.alert(
+        "Order Placed Successfully! 🎉",
+        `Order ID: ${orderId}\nTotal: Nu ${totalAmount.toFixed(2)}`,
+        [
+          { text: "View Orders", onPress: () => console.log("Order placed:", orderId) },
+          { text: "Continue Shopping", style: "cancel" }
+        ]
+      )
+
+    } catch (error) {
+      console.error("Process order error:", error)
+      Alert.alert(
+        "Order Failed", 
+        `Failed to place order: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    } finally {
+      setCheckoutLoading(false)
+    }
+  }
+
+>>>>>>> d518b724cbb8d6c2c2cd6ea2d0c4e34aeb1d19f4
   const handleClearCart = () => {
     clearCart().then(() => refetch())
   }
