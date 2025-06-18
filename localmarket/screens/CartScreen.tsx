@@ -1,10 +1,13 @@
-import { View, FlatList, StyleSheet, Text, Alert } from "react-native"
-import { useState, useEffect } from "react"
+import { View, StyleSheet } from "react-native"
+import { useEffect } from "react"
 import { useCart } from "../hooks/useCart"
 import { supabase } from "../lib/supabase"
-import CartItemCard from "../components/Cart/CartItemCard"
-import EmptyCart from "../components/Cart/EmptyCart"
+import CartHeader from "../components/Cart/CartHeader"
+import CartList from "../components/Cart/CartList"
 import TotalFooter from "../components/Cart/TotalFooter"
+import EmptyCart from "../components/Cart/EmptyCart"
+import CartLoader from "../components/Cart/CartLoader"
+import { useOrderService } from "../hooks/useOrderService"
 
 export default function CartScreen() {
   const {
@@ -16,49 +19,26 @@ export default function CartScreen() {
     clearCart,
     refetch,
   } = useCart()
-  
-  const [checkoutLoading, setCheckoutLoading] = useState(false)
+
+  const { handleCheckout, checkoutLoading } = useOrderService({ cartItems, getTotalPrice, clearCart, refetch })
 
   useEffect(() => {
-    const cartSubscription = supabase
-      .channel('cart_changes_screen')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'cart_items'
-        },
-        (payload) => {
-          console.log('Cart changed:', payload)
-          setTimeout(() => {
-            refetch()
-          }, 100)
-        }
-      )
+    const cartSub = supabase.channel("cart_changes_screen")
+      .on("postgres_changes", { event: "*", schema: "public", table: "cart_items" }, () => setTimeout(refetch, 100))
       .subscribe()
 
-    const orderSubscription = supabase
-      .channel('order_changes_screen')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders'
-        },
-        (payload) => {
-          console.log('Order changed:', payload)
-        }
-      )
+    const orderSub = supabase.channel("order_changes_screen")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {})
       .subscribe()
 
     return () => {
-      supabase.removeChannel(cartSubscription)
-      supabase.removeChannel(orderSubscription)
+      supabase.removeChannel(cartSub)
+      supabase.removeChannel(orderSub)
     }
   }, [refetch])
 
+<<<<<<< HEAD
+=======
   const generateOrderId = () => {
     const timestamp = Date.now()
     const random = Math.random().toString(36).substring(2, 9)
@@ -192,78 +172,31 @@ export default function CartScreen() {
     }
   }
 
+>>>>>>> d518b724cbb8d6c2c2cd6ea2d0c4e34aeb1d19f4
   const handleClearCart = () => {
-    Alert.alert(
-      "Clear Cart",
-      "Are you sure you want to remove all items from your cart?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Clear All", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await clearCart()
-              setTimeout(() => {
-                refetch()
-              }, 50)
-              Alert.alert("Success", "Cart cleared successfully!")
-            } catch (error) {
-              Alert.alert("Error", "Failed to clear cart")
-            }
-          }
-        }
-      ]
-    )
+    clearCart().then(() => refetch())
   }
 
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.loadingText}>Loading cart...</Text>
-      </View>
-    )
-  }
-
-  if (cartItems.length === 0) {
-    return <EmptyCart />
-  }
+  if (loading) return <CartLoader />
+  if (cartItems.length === 0) return <EmptyCart />
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          Shopping Cart ({cartItems.reduce((sum, item) => sum + item.quantity, 0)} items)
-        </Text>
-        <Text 
-          style={styles.clearButton} 
-          onPress={handleClearCart}
-        >
-          Clear All
-        </Text>
-      </View>
-
-      <FlatList
-        data={cartItems}
-        renderItem={({ item }) => (
-          <CartItemCard
-            item={item}
-            onIncrease={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-            onDecrease={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-            onRemove={() => handleRemoveItem(item.id)}
-          />
-        )}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.cartList}
-        showsVerticalScrollIndicator={false}
-        refreshing={loading}
-        onRefresh={refetch} // ✅ Pull-to-refresh functionality
+      <CartHeader 
+        itemCount={cartItems.reduce((sum, item) => sum + item.quantity, 0)} 
+        onClear={handleClearCart} 
       />
-
+      <CartList 
+        items={cartItems} 
+        onUpdate={updateQuantity} 
+        onRemove={removeItem} 
+        loading={loading} 
+        onRefresh={refetch} 
+      />
       <TotalFooter 
         total={getTotalPrice()} 
-        onCheckout={handleCheckout}
-        loading={checkoutLoading}
+        onCheckout={handleCheckout} 
+        loading={checkoutLoading} 
       />
     </View>
   )
@@ -273,38 +206,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: "#6b7280",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#ffffff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#374151",
-  },
-  clearButton: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#ef4444",
-  },
-  cartList: {
-    padding: 16,
   },
 })

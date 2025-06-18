@@ -14,6 +14,7 @@ export function useAuth() {
     }
   }
 
+  
   const register = async (email: string, password: string) => {
     setLoading(true)
     try {
