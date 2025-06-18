@@ -1,4 +1,5 @@
 {
+  // "$schema": "https://json.schemastore.org/tsconfig", // You can comment this out to suppress schema loading errors
   "compilerOptions": {
     "lib": [
       "dom",
@@ -36,6 +37,5 @@
   ],
   "exclude": [
     "node_modules"
-  ],
-  "extends": "expo/tsconfig.base"
+  ]
 }
