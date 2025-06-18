@@ -93,7 +93,7 @@ export default function CartScreen() {
       const { data: { user }, error: authError } = await supabase.auth.getUser()
 
       if (authError || !user) {
-        Alert.alert("Authentication Required", "Please log in to place an order.")
+        Alert.alert("Authentication Required", "Please log in togit version control in steps place an order.")
         return
       }
 
